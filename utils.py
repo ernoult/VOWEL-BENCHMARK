@@ -13,35 +13,37 @@ class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
         self.w = nn.Linear(2, 1)
+        self.out = nn.Sigmoid()
 
     def forward(self, x):
-        x = F.sigmoid(self.w(x))
+        x = self.out(self.w(x))
         return x
 
 
-def train(net, dataset, targets, epochs):
+def train(net, optimizer, criterion, dataset, targets):
     net.train()
-    criterion = nn.BCELoss()
-    optimizer = optim.SGD(net.parameters(), lr = 0.00001)
-    loss_tab = []
-    for epoch in range(epochs):
-        for i, data in enumerate(dataset):
-            target = targets[i, :]
-            optimizer.zero_grad()
-            y = net(data)
-            loss = criterion(y, target)
-            loss.backward()
-            optimizer.step()
-            loss_tab.append(loss.item())
 
-    fig = plt.figure(figsize = (15, 3))
-    plt.rcParams.update({'font.size': 16})
-    plt.plot(loss_tab)
-    plt.ylabel(r'Loss')
-    plt.xlabel(r'$\#$ Samples')
-    plt.grid()
-    fig.tight_layout()
-    plt.show()
+    for i, data in enumerate(dataset):
+        target = targets[i, :]
+        optimizer.zero_grad()
+        y = net(data)
+        loss = criterion(y, target)
+        loss.backward()
+        optimizer.step()
+
+
+def eval(net, dataset, targets):
+    net.eval()
+    y = net(dataset)
+    pred = torch.where(y >= 0.5, torch.ones_like(y), torch.zeros_like(y))
+    #print(y)
+    #print(pred)
+    N_tot = len(dataset)
+    N_correct = (pred == targets).sum().item()
+    accuracy = 100*(1/N_tot)*N_correct
+    print('Train accuracy: {} % ({} out of {})'.format(accuracy, N_correct, N_tot))
+    return accuracy        
+    
 
 def build_dataset():
     #take raw data
@@ -90,7 +92,7 @@ def build_dataset():
                     [1.54242, 1.28755]])   
 
     #normalize data by the maximal value
-    data = data/torch.max(data)
+    #data = data/torch.max(data)
 
     #create data labels
     targets = {}
