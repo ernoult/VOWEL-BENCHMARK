@@ -1,112 +1,117 @@
+import argparse
 from utils import *
+
+parser = argparse.ArgumentParser(description='Feature Binding benchmark')
+parser.add_argument(
+    '--action',
+    type=str,
+    default='train',
+    help='action to execute (default: train)')  
+parser.add_argument(
+    '--vowel',
+    type=str,
+    default='aw',
+    help='selected vowel (default: aw)')
+parser.add_argument(
+    '--R',
+    type=int,
+    default=0,
+    help='noise level (default: 0)')
+parser.add_argument(
+    '--lr',
+    type=float,
+    default=0.1,
+    help='learning rate (default: 0.1)')
+parser.add_argument(
+    '--epochs',
+    type=int,
+    default=100,
+    help='number of epochs (default: 100)')
+args = parser.parse_args()
 
 
 if __name__ == '__main__':
 
-    #build the data set
-    data, targets = build_dataset()
+    if args.action == 'data':
 
-    #build the net
-    net = Net()
+        #build the dataset
+        data, targets = build_dataset(args.R)
+    
+        #plot the dataset
+        plot_data(data, targets)
 
-    #uncomment to display all data
-    '''  
-    fig = plt.figure()
-    plt.rcParams.update({'font.size': 16})
-    plt.plot(data[:, 0].cpu().numpy(), data[:, 1].cpu().numpy(), 'o')
-    plt.xlabel(r'$t_{\rm delay, osc 2}(s)$')
-    plt.ylabel(r'$t_{\rm delay, osc 3}(s)$')
-    plt.grid()
-    fig.tight_layout()
-    plt.show()
-    '''
+    elif args.action == 'train':
 
-    #uncomment to check data classes for each binary classification task
-    '''
-    fig = plt.figure(figsize = (15, 3))
-    plt.rcParams.update({'font.size': 16})
-    for ind, key in enumerate(targets.keys()): 
-        plt.subplot(1, len(targets), ind + 1)
+        #build the data set
+        data, targets = build_dataset(args.R)
+        N_samples = data.size(0) 
+
+        #build the net
+        net = Net()
+
+        #test forward pass with the net
+        '''
+        x = data[0, :]
+        target = targets['aw'][0, :]
+        y = net(x)
+        y.size()
+        print(y)
+        print(target)
+        '''
+
+        #check list of network parameters that requires grad    
+        '''
+        for name, param in net.named_parameters():
+            if param.requires_grad:
+                print(name)
+                print(param.data)
+        '''
+
+        #train the net
+        vowel = args.vowel
+        targets_temp = targets[vowel]
+        optimizer = optim.SGD(net.parameters(), lr = args.lr)
+        criterion = nn.BCELoss()
+        epochs = args.epochs
+        acc_tab = []
+        x_tab = []
+        for epoch in range(epochs):
+            train(net, optimizer, criterion, data, targets_temp)   
+            acc = eval(net, data, targets_temp)
+            acc_tab.append(acc)
+            x_tab.append((epoch + 1)*N_samples)
+
+        print('Total number of samples used for training: {}'.format(x_tab[-1]))
         
-        data_x = data[:, 0].unsqueeze(1)
-        data_y = data[:, 1].unsqueeze(1)
-        plt.plot(data_x[targets[key] == 1].cpu().numpy(), data_y[targets[key] == 1].cpu().numpy(), 'o', color = 'red')
-        plt.plot(data_x[targets[key] == 0].cpu().numpy(), data_y[targets[key] == 0].cpu().numpy(), 'o', color = 'blue')
-        plt.xlabel(r'$t_{\rm delay, osc 2}(s)$')
-        plt.ylabel(r'$t_{\rm delay, osc 3}(s)$')
-        plt.title(key)
-        plt.grid()
-        del data_x, data_y
-    fig.tight_layout()
-    plt.show()
-    '''
-
-    #test forward pass with the net
-    '''
-    x = data[0, :]
-    target = targets['aw'][0, :]
-    y = net(x)
-    y.size()
-    print(y)
-    print(target)
-    '''
-
-    #check list of network parameters that requires grad    
-    '''
-    for name, param in net.named_parameters():
-        if param.requires_grad:
-            print(name)
-            print(param.data)
-    '''
-
-    #train the net on vowel aw
-    #classes_names = ['aw', 'er', 'iy', 'uw']
-    vowel = 'er'
-    targets_temp = targets[vowel]
-    #lr = 0.01 for all vowels but er
-    optimizer = optim.SGD(net.parameters(), lr = 0.1)
-    criterion = nn.BCELoss()
-    epochs = 1200
-    acc_tab = []
-    for epoch in range(epochs):
-        train(net, optimizer, criterion, data, targets_temp)   
-        acc = eval(net, data, targets_temp)
-        acc_tab.append(acc)
-
-    
-    plt.figure()
-    plt.rcParams.update({'font.size': 16})
-    plt.plot(acc_tab)
-    plt.grid()
-    plt.xlabel(r'$\#$ samples')
-    plt.ylabel('Accuracy')
-    
-
-    w = list(net.parameters())
-    w0 = w[0].data.numpy()
-    w1 = w[1].data.numpy()
-
-    fig = plt.figure()
-    plt.rcParams.update({'font.size': 16})
-    data_x = data[:, 0].unsqueeze(1)
-    data_y = data[:, 1].unsqueeze(1)
-    plt.plot(data_x[targets[vowel] == 1].cpu().numpy(), data_y[targets[vowel] == 1].cpu().numpy(), 'o', color = 'red')
-    plt.plot(data_x[targets[vowel] == 0].cpu().numpy(), data_y[targets[vowel] == 0].cpu().numpy(), 'o', color = 'blue')
-
-    x_axis = np.linspace(0, 1.5, 100)
-    y_axis = -(w1[0] + x_axis*w0[0][0]) / w0[0][1]
-    line_up, = plt.plot(x_axis, y_axis,'r--')
-    plt.xlabel(r'$t_{\rm delay, osc 2}(s)$')
-    plt.ylabel(r'$t_{\rm delay, osc 3}(s)$')
-    plt.grid()
-    fig.tight_layout()
-    plt.show()
+        plot_results(data, targets, vowel, x_tab, acc_tab, net)
 
 
+    elif args.action == 'results':
 
+        vowels_tab = ['aw', 'er', 'iy', 'uw']
+        R_tab = [0, 10, 50, 100]
+        #R_tab = [10]
+        N_trials = 10
+        for R in R_tab:
+            results = {}
+            results['aw'], results['er'], results['iy'], results['uw'] = [], [], [], []
+            for vowel in vowels_tab:
+                for n in range(N_trials):
+                    print('R = {}, vowel: {}, trial: {}'.format(R, vowel, 1 + n))                  
+                    data, targets = build_dataset(R)
+                    N_samples = data.size(0) 
+                    net = Net()
+                    targets_temp = targets[vowel]
+                    optimizer = optim.SGD(net.parameters(), lr = args.lr)
+                    criterion = nn.BCELoss()
+                    epochs = args.epochs
+                    acc_tab = []
+                    for epoch in range(epochs):
+                        train(net, optimizer, criterion, data, targets_temp)
 
+                    acc = eval(net, data, targets_temp)
+                    results[vowel].append(acc)
 
-
-
-
+            pd_results = pd.DataFrame(results)
+            pd_results.to_csv(os.getcwd() +'/results_R=' + str(R) +'.csv', index = False)
  
