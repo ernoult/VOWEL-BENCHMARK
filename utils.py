@@ -45,7 +45,13 @@ def eval(net, dataset, targets):
     return accuracy        
     
 
-def build_dataset(R):
+def build_dataset(args, R_in = None):
+
+    if R_in is None:
+        R = args.R
+    else:
+        R = R_in
+	
     #take raw data
     if R == 0:
         num_per_class = 10
@@ -106,25 +112,36 @@ def build_dataset(R):
 
         data = torch.tensor(data).float()
 
-    #create data labels
-    targets = {}
     classes_names = ['aw', 'er', 'iy', 'uw']
 
-    for ind, name in enumerate(classes_names):
-        targets_temp = torch.zeros((data.size(0) , 1))
-        targets_temp[ind*num_per_class: (ind + 1)*num_per_class, :] = 1
-        targets.update({name : targets_temp})
-        del targets_temp
-        
-    #shuffle the data base
-    permuted_indices = torch.randperm(data.size(0))
-    data = data[permuted_indices, :]
+    if args.database:
+        database = {}
+        for ind, vowel in enumerate(classes_names):
+            database[vowel + '-x'] = list(data[ind*num_per_class: (ind + 1)*num_per_class, 0].numpy())
+            database[vowel + '-y'] = list(data[ind*num_per_class: (ind + 1)*num_per_class, 1].numpy())
 
-    for key, value in targets.items():
-        targets[key] = value[permuted_indices, :]
-    
+        return database
 
-    return data, targets
+    else:
+
+        #create data labels
+        targets = {}       
+
+        for ind, name in enumerate(classes_names):
+            targets_temp = torch.zeros((data.size(0) , 1))
+            targets_temp[ind*num_per_class: (ind + 1)*num_per_class, :] = 1
+            targets.update({name : targets_temp})
+            del targets_temp
+            
+        #shuffle the data base
+        permuted_indices = torch.randperm(data.size(0))
+        data = data[permuted_indices, :]
+
+        for key, value in targets.items():
+            targets[key] = value[permuted_indices, :]
+
+
+        return data, targets
 
 def plot_data(data, targets):
 
