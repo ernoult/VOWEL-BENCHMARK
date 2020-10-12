@@ -3,7 +3,7 @@
 This repository contains the code producing benchmarking the results of [the paper](https://arxiv.org/abs/2001.08044) "Binding events through the mutual synchronization of spintronic nano-neurons" (Romera et al, 2020) against standard deep learning. 
 
 
-![GitHub Logo](/binding_pic.png)<!-- .element height="20%" width="20%" -->
+![GitHub Logo](/binding_pic.PNG)<!-- .element height="20%" width="20%" -->
 
 ## Package requirements
 
